@@ -1,0 +1,541 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#123b68">
+<title>Customer Location Tracker</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:#f1f5f9;
+ color:#172536;
+ font-family:Arial,sans-serif;
+}
+header{
+ background:linear-gradient(120deg,#123b68,#1976bd);
+ color:white;
+ padding:25px 18px;
+}
+header h1{font-size:22px;margin:0 0 7px}
+header p{font-size:13px;margin:0}
+main{max-width:650px;margin:auto;padding:17px 13px}
+.card{
+ background:white;
+ border:1px solid #e0e7ef;
+ border-radius:15px;
+ padding:19px;
+ margin-bottom:15px;
+ box-shadow:0 4px 15px #183b6010;
+}
+h2{font-size:18px;margin:0 0 12px}
+label{
+ display:block;
+ font-size:13px;
+ font-weight:bold;
+ margin:13px 0 6px;
+}
+input[type="text"],input[type="tel"]{
+ width:100%;
+ padding:13px;
+ border:1px solid #ccd6e2;
+ border-radius:9px;
+ font-size:16px;
+}
+button,.btn{
+ display:block;
+ width:100%;
+ padding:13px;
+ border:0;
+ border-radius:9px;
+ margin-top:12px;
+ font-size:15px;
+ font-weight:bold;
+ text-align:center;
+ text-decoration:none;
+ cursor:pointer;
+}
+button:disabled{
+ opacity:.45;
+ cursor:not-allowed;
+}
+.blue{background:#1769aa;color:white}
+.green{background:#13834b;color:white}
+.gray{background:#eaf0f6;color:#123b68}
+.notice{
+ background:#fff7e6;
+ border:1px solid #f0d69b;
+ padding:12px;
+ border-radius:9px;
+ font-size:13px;
+ line-height:1.6;
+ color:#77530b;
+}
+.status{
+ background:#edf3f9;
+ padding:12px;
+ border-radius:9px;
+ font-size:14px;
+ line-height:1.6;
+ margin-top:12px;
+ overflow-wrap:anywhere;
+}
+.small{
+ font-size:12px;
+ color:#68778a;
+ line-height:1.6;
+}
+.hidden{display:none!important}
+.map{
+ width:100%;
+ height:290px;
+ border:0;
+ border-radius:10px;
+ margin-top:13px;
+}
+.pill{
+ display:inline-block;
+ background:#e5f5eb;
+ color:#167344;
+ border-radius:30px;
+ padding:6px 10px;
+ font-size:12px;
+ font-weight:bold;
+ margin-bottom:12px;
+}
+.consent{
+ display:flex;
+ align-items:flex-start;
+ gap:9px;
+ margin-top:15px;
+ font-size:13px;
+ line-height:1.5;
+}
+.consent input{
+ width:18px;
+ height:18px;
+ flex-shrink:0;
+ margin-top:1px;
+}
+footer{
+ text-align:center;
+ font-size:12px;
+ color:#8290a0;
+ padding:15px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+ <h1>Customer Location Tracker</h1>
+ <p>Permintaan konfirmasi lokasi nasabah</p>
+</header>
+
+<main>
+
+<!-- DASHBOARD PETUGAS -->
+
+<section id="adminPanel" class="card">
+
+ <h2>Dashboard Petugas</h2>
+
+ <p class="small">
+ Buat tautan permintaan lokasi untuk dikirimkan
+ kepada nasabah melalui WhatsApp.
+ </p>
+
+ <label>Nomor WhatsApp Petugas</label>
+ <input id="officer" type="tel"
+ placeholder="Contoh: 628123456789">
+
+ <label>Kode Referensi</label>
+ <input id="reference" type="text"
+ maxlength="40"
+ placeholder="Contoh: REF001">
+
+ <button class="blue" id="createLink">
+ Buat Link Permintaan Lokasi
+ </button>
+
+ <div id="linkResult" class="status hidden"></div>
+
+ <p class="small">
+ Gunakan kode referensi internal. Hindari memasukkan
+ nama lengkap, nomor kontrak, atau data keuangan
+ sensitif ke dalam tautan.
+ </p>
+
+</section>
+
+<!-- HALAMAN NASABAH -->
+
+<section id="sharePanel" class="card hidden">
+
+ <span class="pill">Permintaan berbagi lokasi</span>
+
+ <h2>Konfirmasi Lokasi Anda</h2>
+
+ <p class="small">
+ Petugas meminta konfirmasi lokasi untuk keperluan
+ administrasi. Jika Anda bersedia, silakan memberikan
+ izin akses GPS melalui tombol di bawah.
+ </p>
+
+ <div id="referenceInfo" class="status"></div>
+
+ <div class="notice">
+ Lokasi hanya diambil setelah Anda menyetujui
+ permintaan akses GPS. Anda bebas menolak atau
+ menutup halaman ini.
+ </div>
+
+ <label class="consent">
+  <input type="checkbox" id="consent">
+  <span>
+   Saya memahami dan menyetujui pembagian lokasi
+   GPS saya kepada petugas untuk konfirmasi alamat.
+  </span>
+ </label>
+
+ <button class="blue" id="getLocation" disabled>
+ Izinkan dan Ambil Lokasi Saya
+ </button>
+
+ <div id="customerStatus" class="status hidden"
+ aria-live="polite"></div>
+
+ <div id="locationResult" class="hidden">
+
+  <h2 style="margin-top:18px">
+   Lokasi Berhasil Diperoleh
+  </h2>
+
+  <div class="status">
+   <div>Latitude:
+    <strong id="lat"></strong>
+   </div>
+   <div>Longitude:
+    <strong id="lng"></strong>
+   </div>
+   <div>Akurasi GPS:
+    <strong id="accuracy"></strong>
+   </div>
+   <div>Waktu pengambilan:
+    <strong id="takenAt"></strong>
+   </div>
+  </div>
+
+  <iframe id="map" class="map"
+   title="Peta lokasi Google Maps"
+   loading="lazy">
+  </iframe>
+
+  <a id="openMap"
+   class="btn gray"
+   target="_blank"
+   rel="noopener">
+   Buka Google Maps
+  </a>
+
+  <button class="green" id="sendLocation">
+   Kirim Lokasi melalui WhatsApp
+  </button>
+
+  <p class="small">
+   WhatsApp akan membuka pesan yang telah disiapkan.
+   Periksa kembali pesan dan tekan tombol Kirim
+   untuk membagikan koordinat kepada petugas.
+  </p>
+
+ </div>
+
+</section>
+
+</main>
+
+<footer>
+ Customer Location Tracker |
+ Berbagi lokasi dengan persetujuan
+</footer>
+
+<script>
+(function(){
+
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+
+let officer = "";
+let latitude = null;
+let longitude = null;
+let accuracy = null;
+let takenAt = null;
+
+function cleanPhone(value){
+ let p = (value || "").replace(/\D/g,"");
+
+ if(p.startsWith("0")){
+  p = "62" + p.slice(1);
+ }else if(p.startsWith("8")){
+  p = "62" + p;
+ }
+
+ return p;
+}
+
+// MODE NASABAH
+
+if(params.get("mode") === "share"){
+
+ $("adminPanel").classList.add("hidden");
+ $("sharePanel").classList.remove("hidden");
+
+ officer = cleanPhone(params.get("to"));
+
+ const ref = params.get("ref") || "-";
+
+ $("referenceInfo").textContent =
+  "Kode referensi: " + ref;
+
+ if(!officer || officer.length < 9){
+
+  $("customerStatus").classList.remove("hidden");
+
+  $("customerStatus").textContent =
+   "Link tidak valid. Silakan hubungi petugas.";
+
+  $("getLocation").disabled = true;
+ }
+}
+
+// PERSETUJUAN
+
+$("consent").addEventListener("change",function(){
+
+ $("getLocation").disabled =
+  !this.checked || officer.length < 9;
+
+});
+
+// MEMBUAT LINK
+
+$("createLink").addEventListener("click",function(){
+
+ const phone = cleanPhone($("officer").value);
+ const ref = $("reference").value.trim();
+
+ if(phone.length < 9){
+  alert("Masukkan nomor WhatsApp petugas dengan benar.");
+  return;
+ }
+
+ if(!window.isSecureContext){
+  alert("Aplikasi harus dibuka melalui HTTPS agar GPS dapat digunakan.");
+  return;
+ }
+
+ const url = new URL(location.href);
+
+ url.search = "";
+ url.hash = "";
+
+ url.searchParams.set("mode","share");
+ url.searchParams.set("to",phone);
+
+ if(ref){
+  url.searchParams.set("ref",ref);
+ }
+
+ const link = url.toString();
+
+ const result = $("linkResult");
+
+ result.classList.remove("hidden");
+ result.replaceChildren();
+
+ const linkText = document.createElement("div");
+ linkText.textContent = link;
+ linkText.style.overflowWrap = "anywhere";
+
+ result.appendChild(linkText);
+
+ const copy = document.createElement("button");
+ copy.className = "gray";
+ copy.textContent = "Salin Link";
+
+ copy.onclick = async function(){
+
+  try{
+   await navigator.clipboard.writeText(link);
+   copy.textContent = "Link berhasil disalin";
+  }catch(e){
+   prompt("Salin link berikut:",link);
+  }
+ };
+
+ result.appendChild(copy);
+
+ const share = document.createElement("a");
+
+ share.className = "btn green";
+ share.textContent = "Kirim Link melalui WhatsApp";
+ share.target = "_blank";
+ share.rel = "noopener";
+
+ share.href =
+  "https://wa.me/?text=" +
+  encodeURIComponent(
+   "Mohon kesediaannya melakukan konfirmasi lokasi secara sukarela melalui tautan berikut:\n" +
+   link
+  );
+
+ result.appendChild(share);
+
+});
+
+// MENGAMBIL GPS SETELAH PERSETUJUAN
+
+$("getLocation").addEventListener("click",function(){
+
+ const status = $("customerStatus");
+
+ status.classList.remove("hidden");
+
+ if(!$("consent").checked){
+  status.textContent =
+   "Mohon berikan persetujuan terlebih dahulu.";
+  return;
+ }
+
+ if(!navigator.geolocation){
+
+  status.textContent =
+   "Browser tidak mendukung fitur GPS.";
+
+  return;
+ }
+
+ if(!window.isSecureContext){
+
+  status.textContent =
+   "GPS memerlukan koneksi HTTPS.";
+
+  return;
+ }
+
+ status.textContent =
+  "Menunggu izin GPS dari perangkat Anda...";
+
+ $("getLocation").disabled = true;
+
+ navigator.geolocation.getCurrentPosition(
+
+  function(position){
+
+   latitude = position.coords.latitude;
+   longitude = position.coords.longitude;
+   accuracy = position.coords.accuracy;
+   takenAt = new Date(position.timestamp);
+
+   $("lat").textContent =
+    latitude.toFixed(6);
+
+   $("lng").textContent =
+    longitude.toFixed(6);
+
+   $("accuracy").textContent =
+    "±" + Math.round(accuracy) + " meter";
+
+   $("takenAt").textContent =
+    takenAt.toLocaleString("id-ID");
+
+   const coordinates =
+    latitude + "," + longitude;
+
+   $("map").src =
+    "https://maps.google.com/maps?q=" +
+    encodeURIComponent(coordinates) +
+    "&z=16&output=embed";
+
+   $("openMap").href =
+    "https://www.google.com/maps/search/?api=1&query=" +
+    encodeURIComponent(coordinates);
+
+   $("locationResult").classList.remove("hidden");
+
+   status.textContent =
+    "Lokasi berhasil diperoleh setelah izin GPS diberikan.";
+
+   $("getLocation").disabled = false;
+
+  },
+
+  function(error){
+
+   const messages = {
+    1:"Izin lokasi ditolak. Anda dapat mengubah izin melalui pengaturan browser.",
+    2:"Lokasi tidak tersedia. Periksa GPS perangkat Anda.",
+    3:"Waktu permintaan habis. Silakan coba kembali."
+   };
+
+   status.textContent =
+    messages[error.code] || "Gagal memperoleh lokasi.";
+
+   $("getLocation").disabled = false;
+
+  },
+
+  {
+   enableHighAccuracy:true,
+   timeout:20000,
+   maximumAge:0
+  }
+
+ );
+
+});
+
+// PENGIRIMAN WHATSAPP SETELAH PERSETUJUAN
+
+$("sendLocation").addEventListener("click",function(){
+
+ if(latitude === null || longitude === null){
+  alert("Lokasi belum tersedia.");
+  return;
+ }
+
+ const coordinates =
+  latitude + "," + longitude;
+
+ const mapLink =
+  "https://www.google.com/maps?q=" +
+  encodeURIComponent(coordinates);
+
+ const ref = params.get("ref") || "-";
+
+ const message =
+  "Saya telah menyetujui pembagian lokasi GPS untuk konfirmasi alamat." +
+  "\nKode referensi: " + ref +
+  "\nLatitude: " + latitude +
+  "\nLongitude: " + longitude +
+  "\nAkurasi GPS: ±" + Math.round(accuracy) + " meter" +
+  "\nWaktu: " + takenAt.toLocaleString("id-ID") +
+  "\nGoogle Maps: " + mapLink;
+
+ const waLink =
+  "https://wa.me/" + officer +
+  "?text=" + encodeURIComponent(message);
+
+ window.location.href = waLink;
+
+});
+
+})();
+</script>
+
+</body>
+</html>
